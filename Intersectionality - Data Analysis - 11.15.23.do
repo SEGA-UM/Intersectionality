@@ -1,7 +1,7 @@
 	 /////// Data Analysis //////
 //// Analyst: Lindsay Kobayashi ////
 //// Date created: 06.02.2022 ////
-//// Date last updated: 11.15.23 ////
+//// Date last updated: 05.27.24 ////
 
 //We are using the KHANDLE Waves 1-4 and STAR Waves 1-3.
 //This do-file uses the derived dataset "khan_star_longitudinal_analysis.dta" created in "Intersectionality - Data Cleaning - 11.15.23.do"
@@ -26,6 +26,7 @@ tab socialmob study if missany==0, row col
 tab mother_educ study if missany==0, row col
 tab father_educ study if missany==0, row col
 tab country_born study if missany==0, row col
+tab education study if missany==0, row col
 
 ////////////// Step 2: Estimate the practice effect offset, as per Ruijia Chen et al 2023 //////////////
 
@@ -120,5 +121,46 @@ reshape wide
 tab cluster1
 
 save "khan_star_longitudinal_analysis.dta", replace
+
+//New supplemental material//
+
+//Supp Table 1. Characteristics of those excluded and included in the sample
+sort missany
+by missany: summ age_bl
+ttest age_bl, by(missany)
+by missany: summ vrmem1 if age_bl!=.
+ttest vrmem1, by(missany)
+tab gender missany if age_bl!=., row col chi2
+tab race_new missany if age_bl!=., row col chi2
+tab socialmob missany if age_bl!=., row col chi2
+tab mother_educ missany if age_bl!=., row col chi2
+tab father_educ missany if age_bl!=., row col chi2
+tab country_born missany if age_bl!=., row col chi2
+
+//Supp Table 2. Age distributions by race/ethnicity
+sort race_new
+by race_new: summ age_bl if missany==0
+
+//Supp Table 4. Restricted to those born in the US
+mixed pzvrmem c.cage_bl##c.yrsbl i.mother_educ i.father_educ i.telephone if country_born==1 || cluster1: yrsbl, cov(un) || id: yrsbl, cov(un) reml
+estat icc 
+mixed pzvrmem c.cage_bl##c.yrsbl i.mother_educ i.father_educ i.telephone i.gender i.race_groups ib1.socialmob if country_born==1 || cluster1: yrsbl, cov(un) || id: yrsbl, cov(un) reml
+estat icc
+
+//Supp Table 5. With adjustment for education
+mixed pzvrmem c.cage_bl##c.yrsbl i.mother_educ i.father_educ i.country_born i.telephone ib7.education || cluster1: yrsbl, cov(un) || id: yrsbl, cov(un) reml
+estat icc
+
+mixed pzvrmem c.cage_bl##c.yrsbl i.mother_educ i.father_educ i.country_born i.telephone i.gender i.race_groups ib1.socialmob ib7.education || cluster1: yrsbl, cov(un) || id: yrsbl, cov(un) reml
+estat icc 
+
+//Supp Table 6. Distribution of education by social mobility
+tab education socialmob if missany==0 & age_bl!=., row col
+
+//Supp Table 7. Main effects model stratified by cohort, without intersectional identity strata
+mixed pzvrmem c.cage_bl##c.yrsbl i.mother_educ i.father_educ i.country_born i.telephone i.gender i.race_groups ib1.socialmob if study=="KHANDLE" || id: yrsbl, cov(un) reml
+estat icc
+mixed pzvrmem c.cage_bl##c.yrsbl i.mother_educ i.father_educ i.country_born i.telephone i.gender ib1.socialmob if study=="STAR" || id: yrsbl, cov(un) reml
+estat icc
 
 
